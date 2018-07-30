@@ -103,19 +103,19 @@ def calc_x_co2( co2, T_S):
 #########     IMPORTANT FUNCTIONS        #####################
 ##############################################################
 
-def calc_OLR( T_S=288, co2=380 ):
+def calc_OLR( T_S=T_S_today, co2=380 , co2_today=co2_today):
   #### x_non_co2 is calculated via the fix values for T_S, CO2, ...
-  x_co2=calc_x_co2(co2_today, T_S_today)
-  x_non_co2=calc_x_non_co2(x_co2, T_S_today)
+  x_co2=calc_x_co2(co2_today, T_S)
+  x_non_co2=calc_x_non_co2(x_co2, T_S)
   #print("T_S", T_S)
   #print("co2", co2)
-  B_no_atm=B(v_arr,T_S_today)
-  B_with_co2=B_out(v_arr, T_S_today, T_T, xi_avg, co2)
+  B_no_atm=B(v_arr,T_S)
+  B_with_co2=B_out(v_arr, T_S, T_T, xi_avg, co2)
   return integrate((B_with_co2- x_non_co2 * B_no_atm), v_arr)
 
 
 # for single P_hum and co2 values. 	
-def calc_T(co2=380, P_hum=0.034):
+def calc_T(co2=co2_today, P_hum=0.034):
   T=[T_S_today]
   h=0.01
   tolerance=0.0001
