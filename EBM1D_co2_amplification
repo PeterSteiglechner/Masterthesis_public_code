@@ -1,102 +1,242 @@
-import time
-start_time=time.time()
+#INTRO
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 
-from EBM1D_main import area_mean
-from EBM1D_main import get_D
-from EBM0D import A_cald, B_cald, xi
-from EBM1D_main import get_OLR
-from EBM1D_main import get_S
-from EBM1D_main import calc_diff
-from EBM1D_main import get_albedo
-from EBM1D_main import get_iceline
-from EBM1D_main import run
-from EBM1D_main import get_P_hum_distribution
 
-##### parameters######
-dt=3600. *1.
-nr_years=15
-N=int(nr_years*3600*24*365 /dt)
-C=4e7
-sigma=5.67e-8
-tau=0.61
-a0=0.3
-ai=0.6
 
-#### grid
-Nlats=180
-lats_star=np.linspace(-90, 90, num=Nlats+1)
-x_star=np.sin(lats_star*np.pi/(Nlats))
-lats=(lats_star[:-1]+ lats_star[1:])/2
+
+
+#SOLAR
+def get_S():
+	# solar insolation (gridpoints x) in W/m^2
+	return 1361./4*(1-0.477*0.5*(3*x**2-1))  
+
+
+
+
+
+
+#MERIDIONAL TRANSPORT
+def get_D(Tf, D_type, OLR_type):
+	# meridional transport constant
+	# will be overwritten by a more complex function later
+	# For now, choose globally assigned value e.g.:
+	D=global_D
+	return D
+
+
+
+
+def calc_diff(T, D):
+	dTdx=np.diff(T)/dx
+	# boundary condition: South/North Pole dTdx=0
+	dTdx=np.insert(dTdx,0,0.)
+	dTdx=np.append(dTdx,0.)
+	h=D*np.diff(dTdx*(1-x_star**2))/dx_star
+	return h
+
+
+#ALBEDO
+def get_albedo(T, Tf, a0, ai):
+	alpha=np.array(a0+0*T)
+	ind=np.where(T<Tf)
+	alpha[ind]=ai
+	return alpha[:]
+
+
+
+
+
+def get_iceline(alpha, ai):
+	ice_index=np.where(alpha==ai)
+	icelats=lats[ice_index[0]]
+	if alpha[-1]!=ai:
+		iceline_N=lats[-1] # ice free NH
+	else: 
+		iceline_N=icelats[np.where(lats[ice_index]>0)[0][0]] # first pos icelat
+	if alpha[0]!=ai:
+		iceline_S=lats[0] # ice free SH
+	else:
+		iceline_S=icelats[np.where(lats[ice_index]<0)[0][-1]] # last neg icelat
+	return [iceline_S, iceline_N] 
+
+
+
+
+
+#OLR ###   OLR parameters   ###
+##  Boltzmann  ##
+##  Linear  ##
+def get_OLR(T, OLR_type, co2=400):
+	if OLR_type=="B":
+		sigma=5.67e-8	# Boltzmann const
+		tau=0.61	# tuned atm transmissivity for OLR
+		return sigma*tau*T**4
+	elif OLR_type=="LM":
+		# Mcguffie and Henderson-Sellers (2014)
+		A_M=-388.74	# W/m^2
+		B_M=2.17	# W/m^2/K
+		return A_M+B_M*T
+	elif OLR_type=="LC":
+		# Caldeira and Kasting (1992)
+		from EBM0D import A_cald, B_cald, xi
+		A_C=A_cald(co2)	#-324.03	# W/m^2 for 400ppm
+		B_C=B_cald(co2)	#1.94	# W/m^2/K for 400ppm
+		return A_C+B_C*T
+
+
+
+#AHF
+def get_P_hum_distribution(P_glob, P_type):
+	if P_type=="M":
+		return P_glob+0*lats
+	elif P_type=="G":
+		# The parameters below are from the gaussian fit to the data in Flanner (2009)
+		a=0.16180316; b= 39.67767011; c=16.63696653 
+		distr= a*np.exp(-(lats-b)**2/c**2)
+		fit_normalized=P_glob/area_mean(distr, lats)*distr
+		return fit_normalized
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+#IMPLEMETNATION
+C=4e7	# [J/m^2/K] heat capacity
+#####	MAIN RUN FUNCTION	####
+def run(T_initial, OLR_type, T_f, a0, ai, D_type, P_type, P_mean, co2=400):
+	Tf=T_f+273.15	# deg to C
+	T=T_initial
+	D=get_D(Tf,D_type, OLR_type)
+	P_hum=get_P_hum_distribution(P_mean, P_type)
+	S=get_S()
+	for n in range(0,N):
+		h = calc_diff(T, D)
+		alpha=get_albedo(T, Tf, a0, ai)
+		iceline=get_iceline(alpha, ai)
+		dTdt=S*(1-alpha) - get_OLR(T, OLR_type, co2=co2)  + h + P_hum
+		T=T+ dt/C * dTdt
+	return T, iceline
+
+
+
+
+#IMPLEMENTATION
+def area_mean(variable, lats):
+	weights=np.cos(lats*np.pi/180)
+	return sum(weights*variable)/sum(weights)
+
+
+
+
+
+
+#IMPLEMENTATION
+###   Spatial Grid   ###
+Nlats=180 	# Nr. of latitudes for T(phi)
+lats_star=np.linspace(-90, 90, num=Nlats+1)	# latidue boundaries
+x_star=np.sin(lats_star*np.pi/(Nlats)) 		
+lats=(lats_star[:-1]+ lats_star[1:])/2		#latitude bands
 x=np.sin(lats*np.pi/180.)
 dx=np.diff(x)
 dx_star=np.diff(x_star)
+###  Temporal Grid  ###
+dt=3600. *1. # [s]  time step for integration
+nr_years=15  # [years] integrated until equilibrium
+N=int(nr_years*3600*24*365 /dt)	# [s] -"-
 
-T0=280-10*(3*x**2-1)
-Q=get_S()
 
-def plotter(name, y, icelat):
-	fig=plt.figure()
-	ax=fig.add_subplot(111)
-	ax2=ax.twinx()
-	ax.plot(lats, y)
-	ax.plot([icelat[1], icelat[1]], [min(y), max(y)], '--b')
-	ax.plot([icelat[0], icelat[0]], [min(y), max(y)], '--b')
-	plt.savefig(folder+OLR+D_type+str(T_f)+P_type+name+".png")
-	return
-	
-#####################     MAIN      ###########################
-D_type="sD" # "sD" "D"
-OLR="LC" #"LM""LC""B"
-T_f=-10; Tf=T_f+273.15
 
-P_type="G" 
 
-CO2_i=388
-CO2_f=582 #776
 
-folder=OLR+D_type+str(T_f)+P_type+"/"
-directory = os.path.dirname(folder)
-try:
-	os.stat(directory)
-except:
-	os.mkdir(directory)  
 
-D=get_D(Tf,D_type, OLR)
-print("Tf:  ", Tf,", D: ", D, ", OLR:" , OLR, ", P_type:", P_type)
-#################  Reference run   ##############################
-print("#### Reference Run ####")
-T, icelines= run(T0, OLR, T_f, a0, ai, D_type, P_type, 0 , co2=388)
-print("glob_mean T", area_mean(T, lats), "iceline", icelines)
-plotter("today_T_profile", T, icelines)
-f=open(folder+OLR+D_type+str(T_f)+P_type+"_today_equ.txt", 'w')
-f.write("T, iceline"+"\n")
-f.write(str(area_mean(T, lats))+"    "+str(icelines[0])+ "   "+ str(icelines[1]))
-f.close()
 
-#################  Reference run with Pglob =0.034   ##############################
-print("#### P=0.034 ####")
-T_ref, icelines_ref= run(T, OLR, T_f, a0, ai, D_type, P_type, 0.034, co2=388)
-print("glob_mean T", area_mean(T_ref, lats), "icelat", icelines_ref, ", DIFF: ", area_mean(T_ref-T, lats))
-plotter("diff_P0034C388", T_ref-T, icelines_ref)
+#RESULTS WITHOUT ICE
+T0_noIce=np.array([288 for phi in x])
+global_D=0.55
+T,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "G", 0.00)
+T_P,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "G", 0.340)
+print("Run without ice-albedo-feedback: dT_mean="+'%.5f' % (area_mean(T_P-T, lats)))
 
-########## P_hum=0.34 and 3.4 and integrate to equilibrium  #############
-print("### Check specific P-hum values in equilibrium. startT=T_P")
-f=open(folder+OLR+D_type+str(T_f)+P_type+"_T_diffs_Px34CO2.txt", 'w')
-f.write("#Area_mean difference of T_ref to T_Px34(P=x*0.034) using setting"+OLR+D_type+str(T_f)+P_type+'\n')
-for x34 in [0.034, 0.34]:
-	for co2 in [CO2_i, CO2_f]:
-		print("###########    P_glob = "+str(x34)+ ", CO2="+str(co2)+"   ##############")
-		T_x34=T_ref 
-		T_x34, icelines_x34 = run(T_x34, OLR, T_f, a0, ai, D_type, P_type, x34 , co2=co2)
-		f.write("P_hum="+str(x34)+", CO2="+str(co2)+"\n")
-		f.write(str(x34)+"   "+str(area_mean(T_x34-T_ref, lats))+"    "+str(icelines_ref[0])+","+str(icelines_ref[1])+"    "+str(icelines_x34[0])+","+str(icelines_x34[1])+'\n')
-		print("P", x34, "C", co2, ", DIFF: ", area_mean(T_x34-T_ref, lats), " icelat: ", icelines_x34)
-		plotter(str(co2)+str(x34), T_x34, icelines_x34)
-		plotter("diff"+str(co2)+str(x34), T_x34-T_ref,icelines_x34)
-f.close()
+##RESULTS WITHOUT ICE
+#global_D=0.55
+#T,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "M", 0.00)
+#T_P,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "M", 0.340)
+#print("Run without ice-albedo-feedback: T_mean="+'%.5f' % (area_mean(T_P-T, lats)))
 
-print(time.time() - start_time, "  seconds needed")
+##RESULTS WITHOUT ICE
+#global_D=0
+#T,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "M", 0.00)
+#T_P,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "M", 0.340)
+#print("Run without ice-albedo-feedback: T_mean="+'%.5f' % (area_mean(T_P-T, lats)))
+
+
+#TUNING
+####    Choose Model Configuration    ####
+# OLR
+OLR_type="B" 	# "B","LM" or "LC"
+
+# ALBEDO/ICE
+T_f=-10 		# -10 or -2
+a0=0.3	# ice free albedo
+ai=0.6	# ice albedo
+
+# INITIAL CONDITION
+T0=280-10*(3*x**2-1)  # initial Temperature
+
+# TUNED D VALUES for all (OLR_type, D-type+T_f)-combinations
+D_type="D" 	# "D" or "sD"
+def get_D(Tf, D_type, OLR_type): # overwriting the previous simple function.
+	D_B={"D-2":0.69 , "sD-2":0.665 , "D-10":0.316 , "sD-10":0.281 }
+	D_LM={"D-2":0.7985, "sD-2": 0.791, "D-10":0.418 , "sD-10":0.395 }
+	D_LC={"D-2":0.792, "sD-2":0.787 , "D-10":0.433 , "sD-10":0.415 }
+	if OLR_type=="B":
+		return D_B[D_type+str(T_f)]
+	if OLR_type=="LM":
+		return D_LM[D_type+str(T_f)]
+	if OLR_type=="LC":
+		return D_LC[D_type+str(T_f)]
+
+# AHF DISTRIBUTION
+P_type="M" 	# "G" or "M"
+
+
+
+# RESULTS WITH ICE
+OLR_type="LC"; T_f=-10; D_type="sD"; P_type="G"; P_glob_today=0.034
+T_today,iceline_today= run(T0, OLR_type, T_f, a0, ai, D_type, P_type, P_glob_today)
+print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_today)+"): <T>_theta= "+'%.4f' % area_mean(T_today, lats) +", icelines:"+str(iceline_today[0])+", "+str(iceline_today[1]))
+P_glob_10x=0.34
+T_10x,iceline_10x= run(T_today, OLR_type, T_f, a0, ai, D_type, P_type, P_glob_10x)
+print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_10x)+"): <T>_theta= "+'%.4f' % area_mean(T_10x, lats) +", icelines:"+str(iceline_10x[0])+", "+str(iceline_10x[1]))
+print("Difference <T_10x - T_today>_theta = "+'%.6f' % area_mean(T_10x-T_today, lats))
+
+
+
+#D_B={"D-2":0.695, "sD-2":0.665, "D-10":0.32, "sD-10":0.29}
+#D_LM={"D-2":0.794, "sD-2":0.786, "D-10":0.42, "sD-10":0.39}
+#D_LC={"D-2":0.794, "sD-2":0.783, "D-10":0.432, "sD-10":0.400}
+
+#~ D=get_D(T_f+273.15, D_type, OLR_type)
+#~ h=calc_diff(T,D)
+#~ print(area_mean(h))
+#~ plt.plot(x, T)
+#~ plt.show()
+#~ dTdx=np.diff(T)/dx
+#~ dTdx=np.insert(dTdx,0,0.)
+#~ dTdx=np.append(dTdx,0.)
+#~ plt.plot(x_star, dTdx)
+#~ plt.show()
+#~ plt.plot(x, h)
+#~ plt.show()
+#~ H=- D *2*np.pi* 6371000**2 *(1-x_star**2) *dTdx 
+#~ plt.plot(x_star, H, color='red')
+#~ plt.show()
+#~ plt.plot(lats_star, H, color='red')
+#~ plt.show()
 
