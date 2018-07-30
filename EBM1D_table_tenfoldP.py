@@ -19,14 +19,9 @@ print("########################")
 print("## Table_tenfold_Phum ##")
 print("########################")
 
-D_type="D" # "sD
 D_types=["D", "sD"] # "sD
-OLR="B" #"M""C"
-OLRs=["LM", "LC", "B"] #"M""C"
-#OLRs=["C"] #"M""C"
-T_f=-2
+OLRs=["LM", "LC", "B"] #"LM""LC"
 T_fs=[-2, -10]
-P_type="M" 
 P_types=["M", "G"] 
 
 # parameters
@@ -86,7 +81,7 @@ for D_type in D_types:
 					f.write("#Area_mean difference of T_P to T_Px34(P=x*0.034) using setting"+OLR+D_type+str(T_f)+P_type+'\n')
 					print("###########    P_glob = "+str(x34)+ "   ##############")
 					T_x34, icelines_x34 = run(T_P, OLR, T_f, a0, ai, D_type, P_type, x34 , co2=400)
-					f.write(str(x34)+"   "+str(area_mean(T_x34-T_P, lats))+",     "+str(icelines_P[0])+","+str(icelines_P[1])+"  -->  "+str(icelines_x34[0])+","+str(icelines_x34[1])+'\n')
+					f.write(str(x34)+"   "+str(area_mean(T_x34-T_P, lats))+",     "+str(icelines_P[0])+","+str(icelines_P[1])+",   "+str(icelines_x34[0])+","+str(icelines_x34[1])+'\n')
 				f.close()
 
 
@@ -136,29 +131,25 @@ def print_setting(tot,OLR ,D_type, T_f,P_type, verbose=True):
     return string
 #print_setting(tot, "B", "sD", -2, "M", verbose=False)                
 def print_full_table(tot,OLR ,D_type, T_f,P_type, verbose=True):
-    if OLR != "B":
-        _OLR="L"+OLR
-    else: 
-        _OLR=OLR
     if P_type=="G":
         _P="G\\textsubscript{F}"
     else:
         _P=P_type
-    pre_string="("+_OLR+D_type+"$_{"+str(T_f)+"}$("+_P+"))&"
+    pre_string="("+OLR+D_type+"$_{"+str(T_f)+"}$("+_P+"))&"
     #(LMsD$_{-10}$(G\textsubscript{F})&
     string=pre_string+print_setting(tot,OLR ,D_type, T_f,P_type, verbose=False)+"\\"+"\\"
     return string
 #print_full_table(tot, "B", "sD", -2, "M", verbose=False)
 
-full_table=open(folder+"EBM1D_table_tenfold.txt", 'w')
-f.write("Model, Delta T, iceline initial, iceline final "+"\n")
+full_table=open("EBM1D_table_tenfold.txt", 'w')
+full_table.write("\\textbf{Model Configuration} & $\\mathbf\{<\\Delta T>_\\theta}$ & \\textbf{initial} \\arrow \\textbf{final iceline [South, North]} \\\\ \\hline "+"\n")
 for OLR in OLRs:
     for D_type in D_types:
         for T_f in T_fs:
             for P_type in P_types:
-                f.write(print_full_table(tot, OLR, D_type, T_f,P_type, verbose=False))
-                f.write("\n")
-f.close()
+                full_table.write(print_full_table(tot, OLR, D_type, T_f,P_type, verbose=False))
+                full_table.write("\n")
+full_table.close()
 
 print(time.time() - start_time, "  seconds needed")
 
