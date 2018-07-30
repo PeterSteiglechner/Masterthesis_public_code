@@ -4,16 +4,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-from latex_schnipsel import area_mean
-from latex_schnipsel import get_D
+from EBM1D_main import area_mean
+from EBM1D_main import get_D
 from EBM0D import A_cald, B_cald, xi
-from latex_schnipsel import get_OLR
-from latex_schnipsel import get_S
-from latex_schnipsel import calc_diff
-from latex_schnipsel import get_albedo
-from latex_schnipsel import get_iceline
-from latex_schnipsel import run
-from latex_schnipsel import get_P_hum_distribution
+from EBM1D_main import get_OLR
+from EBM1D_main import get_S
+from EBM1D_main import calc_diff
+from EBM1D_main import get_albedo
+from EBM1D_main import get_iceline
+from EBM1D_main import run
+from EBM1D_main import get_P_hum_distribution
 
 ##### parameters######
 dt=3600. *1.
