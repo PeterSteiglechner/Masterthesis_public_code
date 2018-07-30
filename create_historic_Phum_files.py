@@ -151,8 +151,7 @@ def get_P_map_year(year, years, data_grid, E_tot, perc, renormalization_factor):
         region_array=get_lat_lon_agg(reg, data_grid.frlnd[0])
         current_area=region_array*(data_grid.frlnd[0]-data_grid.frlnd[0]*data_grid.frglc[0])
         area_size=area_lon(current_area)*6371000**2
-        P_map+=percent*tot*current_area/ area_size /renormalization_factor[year_ind]
-    #scale_to_tot: NOT necessary
+        P_map+=percent*tot*np.array(region_array) *1./ area_size *1./renormalization_factor[year_ind]  
     return P_map
     
 
@@ -202,7 +201,7 @@ if __name__ == '__main__':
         txts=open(txt_files_folder+"P_hum_year"+str(i)+".dat", 'w')
         for line in range(0,len(P_hum_year[:,0])):
             for i in range(0,len(P_hum_year[0,:])):
-                txts.write(str(P_hum_year[line,i].values)+"    ")
+                txts.write(str(P_hum_year[line,i])+"    ")
             txts.write('\n')
         txts.close()
         
