@@ -98,7 +98,7 @@ D_type="D" 	# "D" or "sD"
 P_type="G" 	# "G" or "M"
 
 print("####  MAIN   #####")
-N_time_series=40
+N_time_series=150
 N_cut_off=130
 P_glob_today=0.034
 P_glob=P_glob_today
@@ -111,7 +111,7 @@ P_glob=P_glob_today
 #~ T_today,iceline_today= run(T_today, OLR_type, T_f, a0, ai, D_type, P_type, P_glob_today) # run twice to make sure that I'm in equilibrium
 #~ print('initial run is finished')
 #~ T_10x=T_today
-#~ print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_today)+"): <T>_theta= "+'%.4f' % area_mean(T_today) +", icelines:"+str(iceline_today[0])+", "+str(iceline_today[1]))
+#~ print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_today)+"): <T>_theta= "+'%.4f' % area_mean(T_today, lats) +", icelines:"+str(iceline_today[0])+", "+str(iceline_today[1]))
 
 for equ_or_dyn in ["dyn"]:   #["equ", "dyn"]
 	for OLR_type in ["LM"]:
@@ -127,7 +127,7 @@ for equ_or_dyn in ["dyn"]:   #["equ", "dyn"]
 					os.stat(directory)
 				except:
 					os.mkdir(directory)  
-				print(folder)
+				print(folder, equ_or_dyn)
 				t=open(folder+"T_timeseries_linear"+equ_or_dyn+".txt", 'w')
 				t.write("# MODEL "+OLR_type+D_type+str(T_f)+P_type+"\n")
 				for n in range(0,N_time_series):
@@ -142,7 +142,7 @@ for equ_or_dyn in ["dyn"]:   #["equ", "dyn"]
 					elif equ_or_dyn=="equ":
 						T_10x,iceline_10x= run(T_10x, OLR_type, T_f, a0, ai, D_type, P_type, P_glob)
 
-					print("Difference <T_10x - T_today>_theta = "+'%.6f' % area_mean(T_10x-T_today)," icelines:"+str(iceline_10x[0])+" "+str(iceline_10x[1]))
+					print("Difference <T_10x - T_today>_theta = "+'%.6f' % area_mean(T_10x-T_today, lats)," icelines:"+str(iceline_10x[0])+" "+str(iceline_10x[1]))
 					t.write(str(n)+"   "+str(P_glob)+"     "+str(area_mean(T_10x-T_today, lats))+"      "+"    "+str(iceline_10x[0])+"   "+str(iceline_10x[1]))
 					t.write("\n")
 				t.close()
