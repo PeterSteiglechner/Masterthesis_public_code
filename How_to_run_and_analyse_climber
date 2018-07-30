@@ -1,0 +1,124 @@
+Skip the 1st section if you only want to analyse existing climber runs.
+
+# 1. GOAL: Recreate the simulation run.
+    # ACTION: Log on to your cluster account e.g. via ssh
+
+    export MOM="/home/peterste/mom/MOM_3/"
+    export EXP="$MOM/EXP/"
+    export P="/p/tmp/peterste/working_dir_climber/"
+    export run="my_run"
+
+    cp -a /home/feulner/mom/MOM_3/[ATMOS_SBC_CODE, DATABASE, ISIS_CODE, MOM_CODE, POTSDAM2_CODE, PREP_DATA, SBC, SBC_IC] $MOM
+    # cp -a /home/feulner/mom/MOM_3/EXP/c3beta_mm_ar4_co2only_orbital_steinhilber/ $EXP/$run
+    # This spin-up simulation by Georg Feulner has been run on the old PIK computing cluster. Therefore, some adjustments to the run script were necessary. 
+    # I reccommend taking the program directly from my folder:
+    cp -a /home/peterste/mom/MOM_3/EXP/c3beta_anthrHeat_SampleRun/ $EXP/$run
+
+    # Get the data for the spin-up phase, which builds the initial condition for all runs
+    cp -a /p/projects/climber3/feulner/c3beta_mm_ar4_co2only_orbital_steinhilber $P/$run
+
+    cd $P/$run
+    cp /home/peterste/helper_programs/* .
+
+    # Prepare restart from some year e.g. 1810
+    ./restart_1810_script
+    # ACTION: You have to remove all lines in archive.4 (by hand) after(!) the restart year, e.g. via:
+    vim archive.4
+    for i in archive_*; do cp archive.4 $i; done
+
+    cd $EXP/$run
+
+    cd SBC_UPDATES/POTSDAM2
+    # For changes from the original code search for PETER EDIT in the code
+
+    # "exp.F"
+    ## Read Phum data, get Phum field for each year, read in future solar data, perhaps create a future CO2 scenario.
+    ## For the subroutines read_P_hum and get_current_P_hum were added to exp.F
+    ## Adjust the P_hum data, growth rate/scenario to suit your scenario/run.
+    ## Furthermore adjust the scenario for future solar data in subroutine DATA_SOL
+    ## Yearly CO2-concentration scenarios can be implemented similarily to the solar constant.
+    vim exp.F 
+
+    # "ini.F"
+    ## Call subroutine read_P_hum
+    vim ini.F
+    # "potsdam2.F"
+    ## Call subroutine get_current_P_hum
+    vim potsdam2.F
+
+    # "svat.F"
+    ## As already discussed in the main thesis: Loading P_hum and then adding it into the Enegy Balance equation for QNET
+    vim svat.F 
+
+    # ACTION get data for yearly P_hum (1 file = 1 year), e.g. via the programs mentioned in the thesis. 
+    # Store them on the cluster e.g. in ~/yearly_P_hum_files/Phum_yearYYYY.dat where YYYY is the year (or change name/path in `EXP/$run/run' (see below) and in `$EXP/$run/SBC_UPDATES/POTSDAM2/exp.F')
+    # ACTION get solar data (1 file = all yearly averages) and store it in e.g. ~/solarv_fut.dat (or change name/path in `EXP/$run/run' (see below) and in `$EXP/$run/SBC_UPDATES/POTSDAM2/exp.F' )
+    # ACTION get co2 data (1 file = all yearly averages) and store it in e.g. ~/co2.dat (or change name/path in `EXP/$run/run' and in `$EXP/$run/SBC_UPDATES/POTSDAM2/exp.F')
+
+    # Adjust the run scripts
+    cd $EXP/$run
+    # "run"
+    ## "search for CONTROL FOR ANTHRHEAT in order to see what changes/choices need to be taken"
+    ## " These are: WORKDIR, PHUMpath (with the Phum_yearYYYY.dat files), solar radiation, printoutpath "
+    vim run
+
+    # Compile all changes! Otherwise the program a.out in $P/$run/tmp is not overwritten with any new changes in the fortran code
+    ./run compile
+
+    # "local_sub"
+    ## Control the length of the calculation, WORKPATH, WORKDIR, N_run, N_res
+    vim local_sub
+
+    # "submit-seq.slurm"
+    ## This script runs local_sub. Control cluster parameters like time, run name, etc.. 
+    vim submit-seq.slurm
+
+    sbatch submit-seq.slurm
+    
+    
+    # GOAL: Download your own runs after the procedure above.
+    cd $P
+    cp /home/peterste/helper_programs/shorten_histories .
+    # ACTION Write the names of the folders (run name) you want to analyse into which_history_to_shorten. These will be reduced to the years 1810 to last simulated year.
+    vim which_history_to_shorten
+    ./shorten_histories
+
+# 2. GOAL: Reproduce the results in this thesis
+  # QUICKSTART
+  # GOAL: Download all files from the runs used in my thesis.
+  # ACTION Move to local machine
+  # ACTION download /home/peterste/helper_programs/download_climber_output to local machine
+  # ACTION create a file called "which_history_to_shorten", that includes ALL paths/names of the runs you want to download, e.g. c3beta_anthrHeat_SampleRun (in /p/tmp/peterste/working_dir_climber/)
+  # In order to reproduce the results in the thesis, these are:
+  # c3beta_anthrHeat_hom_P-2Pr_const
+  # c3beta_anthrHeat_hom_P-2Pr_furthergrowth
+  # c3beta_anthrHeat_hom_P-2Pr_rev
+  # c3beta_anthrHeat_hom_P-SSP5_opt1WB
+  # c3beta_anthrHeat_hom_P-SSP5_opt2direct
+  # c3beta_anthrHeat_hom_REF_P2010_equ
+  # c3beta_anthrHeat_hom_REF
+  # c3beta_anthrHeat_hom_ampl_C
+  # c3beta_anthrHeat_hom_ampl_CP
+  # c3beta_anthrHeat_hom_P-2Pr
+  # c3beta_anthrHeat_hom_singleAU
+  # c3beta_anthrHeat_hom_singleAU
+  # c3beta_anthrHeat_hom_singleAM
+  # c3beta_anthrHeat_hom_singleEU
+  # c3beta_anthrHeat_hom_singleSH
+  # c3beta_anthrHeat_hom_singleVA
+  ./download_climber_output
+
+# 3. GOAL: Analyse and Plot the downloaded
+  # Move to local machine
+  ./download_climber_output
+
+  # ACTION: from github/PeterSteiglechner/Masterarbeit_public_code/climber_plots download all cl*.ipynb
+  # ACTION adjust all path names to the downloaded files
+  # ACTION Often one of the first steps in the plotting programs, the grid of the atmosphere module is stored in data_grid: For this, a random snapshot of any run can be downloaded and used.
+  jupyter notebook
+  # ACTION run all programs and enjoy the wonderful plots you just created.
+
+
+
+
+
