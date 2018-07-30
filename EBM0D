@@ -46,7 +46,6 @@ A_C=A_cald(CO2)
 B_C=B_cald(CO2)
 T0_C=(S0/4*(1-alpha)-A_C)/B_C
 dT_P_C=(S0/4*(1-alpha)-A_C+P_hum_glob)/B_C - T0_C
-
-print(dT_P_B, dT_P_M, dT_P_C)
+print("Boltzmann: ", dT_P_B, "Linear Mcguffie and Henderson-Sellers (2014):", dT_P_M,  "Linear Caldeira and Kastings(1992):", dT_P_C)
 
 
