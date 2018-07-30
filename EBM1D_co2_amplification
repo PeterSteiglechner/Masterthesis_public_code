@@ -15,6 +15,10 @@ from EBM1D_main import get_iceline
 from EBM1D_main import run
 from EBM1D_main import get_P_hum_distribution
 
+print("########################")
+print("## CO2_amplification ###")
+print("########################")
+
 ##### parameters######
 dt=3600. *1.
 nr_years=15
@@ -24,7 +28,6 @@ sigma=5.67e-8
 tau=0.61
 a0=0.3
 ai=0.6
-
 #### grid
 Nlats=180
 lats_star=np.linspace(-90, 90, num=Nlats+1)
@@ -66,7 +69,7 @@ except:
 
 D=get_D(Tf,D_type, OLR)
 print("Tf:  ", Tf,", D: ", D, ", OLR:" , OLR, ", P_type:", P_type)
-#################  Reference run   ##############################
+#################  Spin-Up run   ##############################
 print("#### Reference Run ####")
 T, icelines= run(T0, OLR, T_f, a0, ai, D_type, P_type, 0 , co2=400)
 print("glob_mean T", area_mean(T, lats), "iceline", icelines)
@@ -82,7 +85,7 @@ T_ref, icelines_ref= run(T, OLR, T_f, a0, ai, D_type, P_type, 0.034, co2=400)
 print("glob_mean T", area_mean(T_ref, lats), "icelat", icelines_ref, ", DIFF: ", area_mean(T_ref-T, lats))
 plotter("diff_P0034C388", T_ref-T, icelines_ref)
 
-########## P_hum=0.34 and 3.4 and integrate to equilibrium  #############
+########## P_hum=0.34 and 3.4 and CO2=388 and 582 (all combinations  #############
 print("### Check specific P-hum values in equilibrium. startT=T_P")
 f=open(folder+OLR+D_type+str(T_f)+P_type+"_T_diffs_Px34CO2.txt", 'w')
 f.write("#Area_mean difference of T_ref to T_Px34(P=x*0.034) using setting"+OLR+D_type+str(T_f)+P_type+'\n')
