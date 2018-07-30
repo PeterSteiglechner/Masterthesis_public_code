@@ -36,7 +36,7 @@ No=3000		# number of calculations
 v_arr=np.linspace(v_bottom, v_top, num=No)
          
 co2_today=380.
-T_S=288.
+T_S_today=288.
 	
 alpha=0.3
 S0=1361.
@@ -105,43 +105,22 @@ def calc_x_co2( co2, T_S):
 
 def calc_OLR( T_S=288, co2=380 ):
   #### x_non_co2 is calculated via the fix values for T_S, CO2, ...
-  x_co2=calc_x_co2(co2, T_S)
-  x_non_co2=calc_x_non_co2(x_co2, T_S)
+  x_co2=calc_x_co2(co2_today, T_S_today)
+  x_non_co2=calc_x_non_co2(x_co2, T_S_today)
   #print("T_S", T_S)
   #print("co2", co2)
+  B_no_atm=B(v_arr,T_S_today)
+  B_with_co2=B_out(v_arr, T_S_today, T_T, xi_avg, co2)
+  return integrate((B_with_co2- x_non_co2 * B_no_atm), v_arr)
 
-  #if T_S and Co2 are single values:
-  if hasattr(T_S, "__len__")!=True and hasattr(co2,"__len__")!=True:	
-    B_no_atm=B(v_arr,T_S)
-    B_with_co2=B_out(v_arr, T_S, T_T, xi_avg, co2)
-    return integrate((B_with_co2- x_non_co2 * B_no_atm), v_arr)
-  # if T_S is an array
-  elif hasattr(T_S, "__len__")==True and hasattr(co2,"__len__")!=True:
-    OLR=np.empty([len(T_S)])
-    for l in range(0,len(T_S)):
-      B_no_atm=B(v_arr,T_S[l])	#calculate Emission spectrum without atmosphere
-      B_with_co2=B_out(v_arr, T_S[l], T_T, xi_avg, co2)
-      OLR[l]=integrate(B_with_co2 - x_non_co2*B_no_atm , v_arr)	#integral over the whole spectrum
-    return OLR 
-  # if co2 is an array
-  elif hasattr(T_S, "__len__")!=True and hasattr(co2,"__len__")==True:
-    OLR=np.empty([len(co2)])
-    B_no_atm=B(v_arr,T_S)	#calculate Emission spectrum without atmosphere
-    for l in range(0,len(co2)):
-      B_with_co2=B_out(v_arr, T_S, T_T, xi_avg, co2[l])
-      OLR[l]=integrate(B_with_co2 - x_non_co2*B_no_atm , v_arr)	#integral over the whole spectrum
-    return OLR 
-  else:
-    print("Not yet implemented: OLR Matrix (T_S, CO2)")
-    return 0
 
 # for single P_hum and co2 values. 	
 def calc_T(co2=380, P_hum=0.034):
-  T=[T_S]
+  T=[T_S_today]
   h=0.01
   tolerance=0.0001
-  x_co2_today=calc_x_co2(co2, T_S)
-  x_non_co2=calc_x_non_co2(x_co2_today, T_S)
+  x_co2_today=calc_x_co2(co2_today, T_S_today)
+  x_non_co2=calc_x_non_co2(x_co2_today, T_S_today)
   while True:
     x_co2=calc_x_co2(co2, T[-1])
     T_new=T[-1] + h*(S0/4 *(1-alpha) + P_hum - (1-x_non_co2-x_co2)*sigma*T[-1]**4)
@@ -154,11 +133,11 @@ def calc_T(co2=380, P_hum=0.034):
   
   
 if __name__=='__main__':
-	co2_arr=np.linspace(150, 1400, num=20)
+	co2_arr=np.arange(388*0.25, 388*4, step=int(388./4) )
 	OLR_arr=[]
 	for co2 in co2_arr:
 		OLR_arr.append(calc_OLR(T_S=288., co2=co2))
-	print(co2_arr, OLR_arr)
-	T_wilson_C=calc_T(co2=400, P_hum=0 )
-	T_wilson_CP=calc_T(co2=400, P_hum=0.034)
-	print(T_wilson_CP-T_wilson_C, T_wilson_CP, T_wilson_C)
+		print("For co2=", co2," --> OLR=", OLR_arr[-1])
+	T_wilson_C=calc_T(co2=co2_today, P_hum=0 )
+	T_wilson_CP=calc_T(co2=co2_today, P_hum=0.034)
+	print("Temperature difference for P_huum=0.034 is dT=", T_wilson_CP-T_wilson_C, " ( absolute temperatures are : ",T_wilson_CP, T_wilson_C)
