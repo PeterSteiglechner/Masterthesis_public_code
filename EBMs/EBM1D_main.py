@@ -1,7 +1,7 @@
 #INTRO
 import numpy as np
 import matplotlib.pyplot as plt
-
+import EBM1Dmodel as m
 
 
 
@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 #SOLAR
 def get_S():
 	# solar insolation (gridpoints x) in W/m^2
-	return 1361./4*(1-0.477*0.5*(3*x**2-1))  
+	return 1361./4*(1-0.477*0.5*(3*m.x**2-1))  
 
 
 
@@ -28,16 +28,17 @@ def get_D(Tf, D_type, OLR_type):
 
 
 def calc_diff(T, D):
-	dTdx=np.diff(T)/dx
+	#returns the contribution from the meridional heat transport
+	# x = grid for T(lat), x_star = grid for boundaries of lat band ... more details later
+	dTdx=np.diff(T)/m.dx
 	# boundary condition: South/North Pole dTdx=0
 	dTdx=np.insert(dTdx,0,0.)
 	dTdx=np.append(dTdx,0.)
-	h=D*np.diff(dTdx*(1-x_star**2))/dx_star
+	h=D*np.diff(dTdx*(1-m.x_star**2))/m.dx_star
 	return h
-
-
 #ALBEDO
 def get_albedo(T, Tf, a0, ai):
+	# returns bipolar albedo array on x-grid depending on Tf
 	alpha=np.array(a0+0*T)
 	ind=np.where(T<Tf)
 	alpha[ind]=ai
@@ -46,20 +47,19 @@ def get_albedo(T, Tf, a0, ai):
 
 
 
-
 def get_iceline(alpha, ai):
+	# returns the icelines (i.e. lat at which T(lat)<Tf) in NH and SH
 	ice_index=np.where(alpha==ai)
-	icelats=lats[ice_index[0]]
+	icelats=m.lats[ice_index[0]]
 	if alpha[-1]!=ai:
-		iceline_N=lats[-1] # ice free NH
+		iceline_N=m.lats[-1] # ice free NH
 	else: 
-		iceline_N=icelats[np.where(lats[ice_index]>0)[0][0]] # first pos icelat
+		iceline_N=icelats[np.where(m.lats[ice_index]>0)[0][0]] # first pos icelat
 	if alpha[0]!=ai:
-		iceline_S=lats[0] # ice free SH
+		iceline_S=m.lats[0] # ice free SH
 	else:
-		iceline_S=icelats[np.where(lats[ice_index]<0)[0][-1]] # last neg icelat
+		iceline_S=icelats[np.where(m.lats[ice_index]<0)[0][-1]] # last neg icelat
 	return [iceline_S, iceline_N] 
-
 
 
 
@@ -69,9 +69,9 @@ def get_iceline(alpha, ai):
 ##  Linear  ##
 def get_OLR(T, OLR_type, co2=400):
 	if OLR_type=="B":
-		sigma=5.67e-8	# Boltzmann const
+		sigma=5.67e-8	# W/m^2/K^4,  Boltzmann const 
 		tau=0.61	# tuned atm transmissivity for OLR
-		return sigma*tau*T**4
+		return sigma*tau*T**4 
 	elif OLR_type=="LM":
 		# Mcguffie and Henderson-Sellers (2014)
 		A_M=-388.74	# W/m^2
@@ -89,12 +89,12 @@ def get_OLR(T, OLR_type, co2=400):
 #AHF
 def get_P_hum_distribution(P_glob, P_type):
 	if P_type=="M":
-		return P_glob+0*lats
+		return P_glob+0*m.lats
 	elif P_type=="G":
 		# The parameters below are from the gaussian fit to the data in Flanner (2009)
 		a=0.16180316; b= 39.67767011; c=16.63696653 
-		distr= a*np.exp(-(lats-b)**2/c**2)
-		fit_normalized=P_glob/area_mean(distr, lats)*distr
+		distr= a*np.exp(-(m.lats-b)**2/c**2)
+		fit_normalized=P_glob/area_mean(distr, m.lats)*distr
 		return fit_normalized
 
 	
@@ -107,7 +107,7 @@ def get_P_hum_distribution(P_glob, P_type):
 	
 	
 #IMPLEMETNATION
-C=4e7	# [J/m^2/K] heat capacity
+m.C=4e7	# [J/m^2/K] heat capacity
 #####	MAIN RUN FUNCTION	####
 def run(T_initial, OLR_type, T_f, a0, ai, D_type, P_type, P_mean, co2=400):
 	Tf=T_f+273.15	# deg to C
@@ -115,12 +115,12 @@ def run(T_initial, OLR_type, T_f, a0, ai, D_type, P_type, P_mean, co2=400):
 	D=get_D(Tf,D_type, OLR_type)
 	P_hum=get_P_hum_distribution(P_mean, P_type)
 	S=get_S()
-	for n in range(0,N):
+	for n in range(0,m.N):
 		h = calc_diff(T, D)
 		alpha=get_albedo(T, Tf, a0, ai)
 		iceline=get_iceline(alpha, ai)
 		dTdt=S*(1-alpha) - get_OLR(T, OLR_type, co2=co2)  + h + P_hum
-		T=T+ dt/C * dTdt
+		T=T+ m.dt/m.C * dTdt
 	return T, iceline
 
 
@@ -135,33 +135,33 @@ def area_mean(variable, lats):
 
 
 
-
-#IMPLEMENTATION
-###   Spatial Grid   ###
-Nlats=180 	# Nr. of latitudes for T(phi)
-lats_star=np.linspace(-90, 90, num=Nlats+1)	# latidue boundaries
-x_star=np.sin(lats_star*np.pi/(Nlats)) 		
-lats=(lats_star[:-1]+ lats_star[1:])/2		#latitude bands
-x=np.sin(lats*np.pi/180.)
-dx=np.diff(x)
-dx_star=np.diff(x_star)
-###  Temporal Grid  ###
-dt=3600. *1. # [s]  time step for integration
-nr_years=15  # [years] integrated until equilibrium
-N=int(nr_years*3600*24*365 /dt)	# [s] -"-
-
-
+if __name__=='__main__':
+	#IMPLEMENTATION
+	###   Spatial Grid   ###
+	m.Nlats=180 	# Nr. of latitudes for T(phi)
+	m.lats_star=np.linspace(-90, 90, num=m.Nlats+1)	# latidue boundaries
+	m.x_star=np.sin(m.lats_star*np.pi/180.) 		
+	m.lats=(m.lats_star[:-1]+ m.lats_star[1:])/2		#latitude bands
+	m.x=np.sin(m.lats*np.pi/180.)
+	m.dx=np.diff(m.x)
+	m.dx_star=np.diff(m.x_star)
+	###  Temporal Grid  ###
+	m.dt=3600. *1. # [s]  time step for integration
+	m.nr_years=15  # [years] integrated until equilibrium
+	m.N=int(m.nr_years*3600*24*365 /m.dt)	# [s] -"-
 
 
 
 
 
-#RESULTS WITHOUT ICE
-T0_noIce=np.array([288 for phi in x])
-global_D=0.55
-T,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "G", 0.00)
-T_P,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "G", 0.340)
-print("Run without ice-albedo-feedback: dT_mean="+'%.5f' % (area_mean(T_P-T, lats)))
+
+if __name__=='__main__':
+	#RESULTS WITHOUT ICE
+	T0_noIce=np.array([288 for theta in m.x])
+	global_D=0.55
+	T,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "G", 0.00)
+	T_P,XX= run(T0_noIce, "B", 0, 0.3, 0.3, "", "G", 0.340)
+	print("Run without ice-albedo-feedback: dT_mean="+'%.5f' % (area_mean(T_P-T, m.lats)))
 
 ##RESULTS WITHOUT ICE
 #global_D=0.55
@@ -187,7 +187,7 @@ a0=0.3	# ice free albedo
 ai=0.6	# ice albedo
 
 # INITIAL CONDITION
-T0=280-10*(3*x**2-1)  # initial Temperature
+T0=280-20*(0.5*(3*m.x**2-1))  # initial Temperature
 
 # TUNED D VALUES for all (OLR_type, D-type+T_f)-combinations
 D_type="D" 	# "D" or "sD"
@@ -206,15 +206,15 @@ def get_D(Tf, D_type, OLR_type): # overwriting the previous simple function.
 P_type="M" 	# "G" or "M"
 
 
-
-# RESULTS WITH ICE
-OLR_type="LC"; T_f=-2; D_type="sD"; P_type="M"; P_glob_today=0.034
-T_today,iceline_today= run(T0, OLR_type, T_f, a0, ai, D_type, P_type, P_glob_today)
-print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_today)+"): <T>_theta= "+'%.4f' % area_mean(T_today, lats) +", icelines:"+str(iceline_today[0])+", "+str(iceline_today[1]))
-P_glob_10x=0.34
-T_10x,iceline_10x= run(T_today, OLR_type, T_f, a0, ai, D_type, P_type, P_glob_10x)
-print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_10x)+"): <T>_theta= "+'%.4f' % area_mean(T_10x, lats) +", icelines:"+str(iceline_10x[0])+", "+str(iceline_10x[1]))
-print("Difference <T_10x - T_today>_theta = "+'%.6f' % area_mean(T_10x-T_today, lats))
+if __name__=='__main__':
+	# RESULTS WITH ICE
+	OLR_type="B"; T_f=-10; D_type="sD"; P_type="G"; P_glob_today=0.034
+	T_today,iceline_today= run(T0, OLR_type, T_f, a0, ai, D_type, P_type, P_glob_today)
+	print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_today)+"): <T>_theta= "+'%.4f' % area_mean(T_today, m.lats) +", icelines:"+str(iceline_today[0])+", "+str(iceline_today[1]))
+	P_glob_10x=0.34
+	T_10x,iceline_10x= run(T_today, OLR_type, T_f, a0, ai, D_type, P_type, P_glob_10x)
+	print(OLR_type+D_type+str(T_f)+" ("+P_type+", P_glob="+str(P_glob_10x)+"): <T>_theta= "+'%.4f' % area_mean(T_10x, m.lats) +", icelines:"+str(iceline_10x[0])+", "+str(iceline_10x[1]))
+	print("Difference <T_10x - T_today>_theta = "+'%.6f' % area_mean(T_10x-T_today, m.lats))
 
 
 

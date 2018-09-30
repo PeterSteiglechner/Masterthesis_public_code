@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+import EBM1Dmodel as model
 from EBM1D_main import area_mean
 from EBM1D_main import get_D
 from EBM0D import A_cald, B_cald, xi
@@ -25,24 +26,24 @@ T_fs=[-2, -10]
 P_types=["M", "G"] 
 
 # parameters
-dt=3600. *1.
-nr_years=15
-N=int(nr_years*3600*24*365 /dt)
-C=4e7
+model.dt=1./4*3600. *1.
+model.nr_years=15
+model.N=int(model.nr_years*3600*24*365 /model.dt)
+model.C=4e7
 
 a0=0.3
 ai=0.6
 
 #### grid
-Nlats=180
-lats_star=np.linspace(-90, 90, num=Nlats+1)
-x_star=np.sin(lats_star*np.pi/(Nlats))
-lats=(lats_star[:-1]+ lats_star[1:])/2
-x=np.sin(lats*np.pi/180.)
-dx=np.diff(x)
-dx_star=np.diff(x_star)
+model.Nlats=360
+model.lats_star=np.linspace(-90, 90, num=model.Nlats+1)
+model.x_star=np.sin(model.lats_star*np.pi/180)
+model.lats=(model.lats_star[:-1]+ model.lats_star[1:])/2
+model.x=np.sin(model.lats*np.pi/180.)
+model.dx=np.diff(model.x)
+model.dx_star=np.diff(model.x_star)
 
-T0=280-10*(3*x**2-1)
+T0=280-10*(3*model.x**2-1)
 Q=get_S()  #solar insolation (lats) in W/m^2
 
 
@@ -50,7 +51,7 @@ for D_type in D_types:
 	for OLR in OLRs:
 		for T_f in T_fs:
 			for P_type in P_types:
-				folder=OLR+D_type+str(T_f)+P_type+"/"
+				folder=OLR+D_type+str(T_f)+P_type+"_doubleRes/"
 				directory = os.path.dirname(folder)
 				try:
 					os.stat(directory)
@@ -65,11 +66,11 @@ for D_type in D_types:
 				#################  Reference run with Pglob =0.034   ##############################
 				print("#### P=00.034 ####")
 				T_P, icelines_P = run(T0, OLR, T_f, a0, ai, D_type, P_type, 0.034 , co2=400)
-				print("glob_mean T", area_mean(T_P, lats), "icelines", icelines_P)
+				print("glob_mean T", area_mean(T_P, model.lats), "icelines", icelines_P)
 				### SAVE_DATA:
 				f=open(folder+OLR+D_type+str(T_f)+P_type+"0.034.txt", 'w')
 				f.write("T, iceline"+"\n")
-				f.write(str(area_mean(T_P, lats))+"    "+str(icelines_P[0])+ "   "+ str(icelines_P[1]))
+				f.write(str(area_mean(T_P, model.lats))+"    "+str(icelines_P[0])+ "   "+ str(icelines_P[1]))
 				f.write("\n")
 				f.close()
 
@@ -81,7 +82,7 @@ for D_type in D_types:
 					f.write("#Area_mean difference of T_P to T_Px34(P=x*0.034) using setting"+OLR+D_type+str(T_f)+P_type+'\n')
 					print("###########    P_glob = "+str(x34)+ "   ##############")
 					T_x34, icelines_x34 = run(T_P, OLR, T_f, a0, ai, D_type, P_type, x34 , co2=400)
-					f.write(str(x34)+"   "+str(area_mean(T_x34-T_P, lats))+",     "+str(icelines_P[0])+","+str(icelines_P[1])+",   "+str(icelines_x34[0])+","+str(icelines_x34[1])+'\n')
+					f.write(str(x34)+"   "+str(area_mean(T_x34-T_P, model.lats))+",     "+str(icelines_P[0])+","+str(icelines_P[1])+",   "+str(icelines_x34[0])+","+str(icelines_x34[1])+'\n')
 				f.close()
 
 
@@ -102,7 +103,7 @@ for D_type in D_types:
     for OLR in OLRs:
         for T_f in T_fs:
             for P_type in P_types:
-                folder=OLR+D_type+str(T_f)+P_type+"/"
+                folder=OLR+D_type+str(T_f)+P_type+"_doubleRes/"
                 filename=folder+OLR+D_type+str(T_f)+P_type+"_T_diffs_P0.34.txt"
                 s = open(filename).read().replace(',','   ')
                 data=np.loadtxt(StringIO.StringIO(s))
@@ -141,7 +142,7 @@ def print_full_table(tot,OLR ,D_type, T_f,P_type, verbose=True):
     return string
 #print_full_table(tot, "B", "sD", -2, "M", verbose=False)
 
-full_table=open("EBM1D_table_tenfold.txt", 'w')
+full_table=open("EBM1D_table_tenfold_doubleRes.txt", 'w')
 full_table.write("\\textbf{Model Configuration} & $\\mathbf\{<\\Delta T>_\\theta}$ & \\textbf{initial} \\arrow \\textbf{final iceline [South, North]} \\\\ \\hline "+"\n")
 for OLR in OLRs:
     for D_type in D_types:

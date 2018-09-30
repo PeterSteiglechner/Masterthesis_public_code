@@ -103,10 +103,10 @@ def calc_x_co2( co2, T_S):
 #########     IMPORTANT FUNCTIONS        #####################
 ##############################################################
 
-def calc_OLR( T_S=T_S_today, co2=380 , co2_today=co2_today):
+def calc_OLR( T_S=T_S_today, co2=380 , co2_today=co2_today, T_S_today=288.):
   #### x_non_co2 is calculated via the fix values for T_S, CO2, ...
-  x_co2=calc_x_co2(co2_today, T_S)
-  x_non_co2=calc_x_non_co2(x_co2, T_S)
+  x_co2=calc_x_co2(co2_today, T_S_today)
+  x_non_co2=calc_x_non_co2(x_co2, T_S_today)
   #print("T_S", T_S)
   #print("co2", co2)
   B_no_atm=B(v_arr,T_S)
@@ -141,3 +141,9 @@ if __name__=='__main__':
 	T_wilson_C=calc_T(co2=co2_today, P_hum=0 )
 	T_wilson_CP=calc_T(co2=co2_today, P_hum=0.034)
 	print("Temperature difference for P_huum=0.034 is dT=", T_wilson_CP-T_wilson_C, " ( absolute temperatures are : ",T_wilson_CP, T_wilson_C)
+
+	T_arr=np.linspace(210,310, num=40)
+	OLR=[]
+	for i in T_arr:
+		OLR.append(calc_OLR(T_S=i, co2=400, co2_today=400))
+	print(OLR)	

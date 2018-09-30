@@ -18,7 +18,7 @@ tau= S0/4 * (1-alpha) / (sigma * T_goal**4)
 
 #Boltz
 T0_B=(S0/4 * (1-alpha) / (sigma*tau))**0.25
-P_hum_glob=0.34 # W/m^2 AHF today
+P_hum_glob=0.034 # W/m^2 AHF today
 dT_P_B=((S0/4*(1-alpha)+ P_hum_glob)/(tau*sigma))**0.25- T0_B
 
 

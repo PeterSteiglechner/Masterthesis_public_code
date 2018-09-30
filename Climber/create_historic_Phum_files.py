@@ -34,7 +34,7 @@ def get_data_of_year(array, y, years):
     return h
 
 def get_Energy():
-    data_E=np.loadtxt(E_consumption_area_fromExcel.txt")
+    data_E=np.loadtxt("E_consumption_area_fromExcel.txt")
     years=data_E[0,:]
     EpC={}
     Pop={}
